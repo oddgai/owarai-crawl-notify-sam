@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  python3.9
+
+  Sample SAM Template for owarai-crawl
+
+Globals:
+  Function:
+    Timeout: 900
+    MemorySize: 128
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Default: "owarai-crawl"
+
+Resources:
+  OwaraiCrawlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Architectures:
+        - x86_64
+      Policies:
+        - S3WritePolicy:
+          BucketName: !Ref S3BucketName
+        - arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess
+      Events:
+        OwaraiCrawl:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 10 * * ? *) # 日本時間19:00
+
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: ./src
+      DockerTag: python3.9-v1
+
+  ApplicationResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name:
+        Fn::Join:
+          - ""
+          - - ApplicationInsights-SAM-
+            - Ref: AWS::StackName
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+  ApplicationInsightsMonitoring:
+    Type: AWS::ApplicationInsights::Application
+    Properties:
+      ResourceGroupName:
+        Fn::Join:
+          - ""
+          - - ApplicationInsights-SAM-
+            - Ref: AWS::StackName
+      AutoConfigurationEnabled: "true"
+    DependsOn: ApplicationResourceGroup
+Outputs:
+  OwaraiCrawlFunction:
+    Description: Lambda Function ARN
+    Value: !GetAtt OwaraiCrawlFunction.Arn
+  OwaraiCrawlFunctionIamRole:
+    Description: Implicit IAM Role created for Lambda function
+    Value: !GetAtt OwaraiCrawlFunctionRole.Arn
